@@ -1,0 +1,41 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Country Comparison</h1>
+
+    <form method="post" class="mb-4">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-8">
+                <label class="form-label">Select Countries:</label>
+                <select name="countries" class="form-select" multiple size="5">
+                    {% for country in countries %}
+                        <option value="{{ country.iso_code }}"
+                            {% if country.iso_code in selected_countries %}selected{% endif %}>
+                            {{ country.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Select Metric:</label>
+                <select name="metric" class="form-select">
+                    <option value="total_cases" {% if metric == 'total_cases' %}selected{% endif %}>Total Cases</option>
+                    <option value="new_cases_smoothed" {% if metric == 'new_cases_smoothed' %}selected{% endif %}>New Cases (7-day avg)</option>
+                    <option value="total_deaths" {% if metric == 'total_deaths' %}selected{% endif %}>Total Deaths</option>
+                    <option value="new_deaths_smoothed" {% if metric == 'new_deaths_smoothed' %}selected{% endif %}>New Deaths (7-day avg)</option>
+                    <option value="people_vaccinated" {% if metric == 'people_vaccinated' %}selected{% endif %}>People Vaccinated</option>
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Compare</button>
+    </form>
+
+    {% if line_html %}
+        <div class="card mb-4">
+            <div class="card-body">
+                {{ line_html|safe }}
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

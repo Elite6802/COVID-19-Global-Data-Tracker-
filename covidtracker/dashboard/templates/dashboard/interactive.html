@@ -1,0 +1,114 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Interactive COVID-19 Dashboard</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <form id="data-form">
+                    <div class="mb-3">
+                        <label class="form-label">Country</label>
+                        <select name="country" class="form-select" required>
+                            {% for country in countries %}
+                                <option value="{{ country.iso_code }}">{{ country.name }} ({{ country.iso_code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" name="start_date" class="form-control"
+                               value="{{ default_start }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" name="end_date" class="form-control"
+                               value="{{ default_end }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Metric</label>
+                        <select name="metric" class="form-select">
+                            <option value="total_cases">Total Cases</option>
+                            <option value="new_cases_smoothed">New Cases (7-day avg)</option>
+                            <option value="total_deaths">Total Deaths</option>
+                            <option value="new_deaths_smoothed">New Deaths (7-day avg)</option>
+                            <option value="icu_patients">ICU Patients</option>
+                            <option value="hosp_patients">Hospital Patients</option>
+                            <option value="people_vaccinated">People Vaccinated</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Load Data</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div id="chart-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('data-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const chartContainer = document.getElementById('chart-container');
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    // Clear previous errors
+    chartContainer.innerHTML = '';
+
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Loading...';
+
+    try {
+        const params = new URLSearchParams(new FormData(form));
+        params.set('country', params.get('country').toUpperCase());
+
+        const response = await fetch(`/api/country-data/?${params.toString()}`);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Request failed');
+        }
+
+        const data = await response.json();
+
+        // Create chart
+        Plotly.newPlot(chartContainer, [{
+            x: data.dates,
+            y: data.values,
+            type: 'line',
+            name: `${data.country} - ${data.metric}`
+        }], {
+            title: `${data.metric} in ${data.country}`,
+            xaxis: { title: 'Date' },
+            yaxis: { title: data.metric }
+        });
+
+    } catch (error) {
+        chartContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Error:</strong> ${error.message}
+                ${error.suggestions ? `<br>Try: ${error.suggestions.join(', ')}` : ''}
+            </div>
+        `;
+        console.error('API Error:', error);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Load Data';
+    }
+    });
+</script>
+{% endblock %}
